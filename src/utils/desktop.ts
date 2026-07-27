@@ -32,6 +32,33 @@ const NORMAL_MIN_SIZE = { width: 1024, height: 720 }
 
 let sizeBeforeMini: { width: number; height: number } | null = null
 
+/** 小窗被拖到哪儿就记在哪儿，下次进入摸鱼模式直接回到原位。 */
+const MINI_POSITION_KEY = 'miniWindowPosition'
+
+function readStoredMiniPosition(): { x: number; y: number } | null {
+  try {
+    const raw = localStorage.getItem(MINI_POSITION_KEY)
+    if (!raw) return null
+    const parsed = JSON.parse(raw)
+    return typeof parsed?.x === 'number' && typeof parsed?.y === 'number' ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+/**
+ * 「老板键」：全局快捷键，一键把窗口收起，再按一下唤回。
+ *
+ * 显隐切换在 Rust 侧完成：窗口 hide() 后 webview 的 JS 会被系统挂起，
+ * 把回调放在前端会导致按第二次唤不回来。这里只负责开关注册。
+ */
+export const PANIC_KEY_SHORTCUT = 'CommandOrControl+Alt+K'
+
+async function setPanicKeyEnabled(enabled: boolean): Promise<void> {
+  const { invoke } = await import('@tauri-apps/api/core')
+  await invoke('set_panic_key_enabled', { enabled })
+}
+
 export async function enterMiniWindow(): Promise<void> {
   if (!IS_DESKTOP) return
 
@@ -47,6 +74,15 @@ export async function enterMiniWindow(): Promise<void> {
   await win.setMinSize(new LogicalSize(MINI_WINDOW_SIZE.width, MINI_WINDOW_SIZE.height))
   await win.setSize(new LogicalSize(MINI_WINDOW_SIZE.width, MINI_WINDOW_SIZE.height))
   await win.setAlwaysOnTop(true)
+
+  const stored = readStoredMiniPosition()
+  if (stored) {
+    const { LogicalPosition } = await import('@tauri-apps/api/dpi')
+    await win.setPosition(new LogicalPosition(stored.x, stored.y))
+  }
+
+  // 快捷键注册失败（比如被别的软件占用）不该拖垮整个摸鱼模式。
+  await setPanicKeyEnabled(true).catch(() => undefined)
 }
 
 export async function exitMiniWindow(): Promise<void> {
@@ -54,6 +90,18 @@ export async function exitMiniWindow(): Promise<void> {
 
   const { getCurrentWindow, LogicalSize } = await import('@tauri-apps/api/window')
   const win = getCurrentWindow()
+
+  // 退出前记下小窗当前位置，供下次进入时还原。
+  try {
+    const pos = await win.outerPosition()
+    const scale = await win.scaleFactor()
+    const logical = pos.toLogical(scale)
+    localStorage.setItem(MINI_POSITION_KEY, JSON.stringify({ x: logical.x, y: logical.y }))
+  } catch {
+    // 位置记不住不影响退出本身，忽略。
+  }
+
+  await setPanicKeyEnabled(false).catch(() => undefined)
 
   await win.setAlwaysOnTop(false)
   const restore = sizeBeforeMini ?? NORMAL_MIN_SIZE
