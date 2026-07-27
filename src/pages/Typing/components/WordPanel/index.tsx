@@ -8,6 +8,10 @@ import Translation from './components/Translation'
 import WordComponent from './components/Word'
 import { usePrefetchPronunciationSound } from '@/hooks/usePronunciation'
 import {
+  continuousModeConfigAtom,
+  currentChapterAtom,
+  currentDictInfoAtom,
+  isImmersiveModeAtom,
   isReviewModeAtom,
   isShowPrevAndNextWordAtom,
   loopWordConfigAtom,
@@ -16,7 +20,7 @@ import {
   reviewModeInfoAtom,
 } from '@/store'
 import type { Word } from '@/typings'
-import { useAtomValue, useSetAtom } from 'jotai'
+import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import { useCallback, useContext, useMemo, useRef, useState } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 
@@ -25,6 +29,7 @@ export default function WordPanel() {
   const { state, dispatch } = useContext(TypingContext)!
   const phoneticConfig = useAtomValue(phoneticConfigAtom)
   const isShowPrevAndNextWord = useAtomValue(isShowPrevAndNextWordAtom)
+  const isImmersiveMode = useAtomValue(isImmersiveModeAtom)
   const [wordComponentKey, setWordComponentKey] = useState(0)
   const [currentWordExerciseCount, setCurrentWordExerciseCount] = useState(0)
   const { times: loopWordTimes } = useAtomValue(loopWordConfigAtom)
@@ -33,6 +38,9 @@ export default function WordPanel() {
 
   const setReviewModeInfo = useSetAtom(reviewModeInfoAtom)
   const isReviewMode = useAtomValue(isReviewModeAtom)
+  const continuousModeConfig = useAtomValue(continuousModeConfigAtom)
+  const currentDictInfo = useAtomValue(currentDictInfoAtom)
+  const [, setCurrentChapter] = useAtom(currentChapterAtom)
 
   const prevIndex = useMemo(() => {
     const newIndex = state.chapterData.index - 1
@@ -81,6 +89,14 @@ export default function WordPanel() {
       }
     } else {
       // 用户完成当前章节
+      // 连续练习：不弹结算页，直接续上下一章，最后一章后回到第一章。
+      // 复习模式有自己的收尾逻辑，不参与。
+      if (continuousModeConfig.isOpen && !isReviewMode) {
+        setCurrentChapter((old) => (old >= currentDictInfo.chapterCount - 1 ? 0 : old + 1))
+        dispatch({ type: TypingStateActionType.NEXT_CHAPTER })
+        return
+      }
+
       dispatch({ type: TypingStateActionType.FINISH_CHAPTER })
       if (isReviewMode) {
         setReviewModeInfo((old) => ({ ...old, reviewRecord: old.reviewRecord ? { ...old.reviewRecord, isFinished: true } : undefined }))
@@ -96,6 +112,9 @@ export default function WordPanel() {
     isReviewMode,
     updateReviewRecord,
     setReviewModeInfo,
+    continuousModeConfig.isOpen,
+    currentDictInfo.chapterCount,
+    setCurrentChapter,
   ])
 
   const onSkipWord = useCallback(
@@ -170,7 +189,7 @@ export default function WordPanel() {
   return (
     <div className="container flex h-full w-full flex-col items-center justify-center">
       <div className="container flex h-24 w-full shrink-0 grow-0 justify-between px-12 pt-10">
-        {isShowPrevAndNextWord && state.isTyping && (
+        {isShowPrevAndNextWord && !isImmersiveMode && state.isTyping && (
           <>
             <PrevAndNextWord type="prev" />
             <PrevAndNextWord type="next" />

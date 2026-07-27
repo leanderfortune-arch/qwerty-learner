@@ -72,6 +72,11 @@ export const randomConfigAtom = atomForConfig('randomConfig', {
   isOpen: false,
 })
 
+/** 章节练完后不停下来结算，直接进入下一章；练到最后一章则回到第一章。 */
+export const continuousModeConfigAtom = atomForConfig('continuousMode', {
+  isOpen: false,
+})
+
 export const isShowPrevAndNextWordAtom = atomWithStorage('isShowPrevAndNextWord', true)
 
 export const isIgnoreCaseAtom = atomWithStorage('isIgnoreCase', true)
@@ -79,6 +84,16 @@ export const isIgnoreCaseAtom = atomWithStorage('isIgnoreCase', true)
 export const isShowAnswerOnHoverAtom = atomWithStorage('isShowAnswerOnHover', true)
 
 export const isTextSelectableAtom = atomWithStorage('isTextSelectable', false)
+
+/** 沉浸模式：练习时隐藏顶栏、统计条与页脚，只留单词本身。顶栏在鼠标移到顶部时浮现。 */
+export const isImmersiveModeAtom = atomWithStorage('isImmersiveMode', false)
+
+/**
+ * 摸鱼模式：把窗口缩成置顶小窗。仅桌面端可用。
+ * 该尺寸下放不下顶栏与统计条，因此强制使用沉浸布局——这是尺寸决定的，
+ * 不改变用户在设置里的沉浸模式偏好。
+ */
+export const isMiniWindowModeAtom = atomWithStorage('isMiniWindowMode', false)
 
 export const reviewModeInfoAtom = reviewInfoAtom({
   isReviewMode: false,

@@ -14,9 +14,18 @@ import { DonateCard } from '@/components/DonateCard'
 import Header from '@/components/Header'
 import Tooltip from '@/components/Tooltip'
 import { idDictionaryMap } from '@/resources/dictionary'
-import { currentChapterAtom, currentDictIdAtom, isReviewModeAtom, randomConfigAtom, reviewModeInfoAtom } from '@/store'
+import {
+  currentChapterAtom,
+  currentDictIdAtom,
+  isImmersiveModeAtom,
+  isMiniWindowModeAtom,
+  isReviewModeAtom,
+  randomConfigAtom,
+  reviewModeInfoAtom,
+} from '@/store'
 import { IsDesktop, isLegal } from '@/utils'
 import { useSaveChapterRecord } from '@/utils/db'
+import { enterMiniWindow } from '@/utils/desktop'
 import { useMixPanelChapterLogUploader } from '@/utils/mixpanel'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import type React from 'react'
@@ -29,6 +38,19 @@ const App: React.FC = () => {
   const { words } = useWordList()
 
   const [currentDictId, setCurrentDictId] = useAtom(currentDictIdAtom)
+  const isImmersiveModeSetting = useAtomValue(isImmersiveModeAtom)
+  const isMiniWindowMode = useAtomValue(isMiniWindowModeAtom)
+  // 小窗尺寸下顶栏与统计条根本放不下，因此一并走沉浸布局。
+  const isImmersiveMode = isImmersiveModeSetting || isMiniWindowMode
+
+  // 开关状态会持久化，但窗口尺寸不会：重启后若仍处于摸鱼模式，
+  // 需要把窗口重新缩回小窗，否则状态与实际窗口不一致。
+  useEffect(() => {
+    if (!isMiniWindowMode) return
+    enterMiniWindow().catch(() => undefined)
+    // 只在挂载时同步一次，后续切换由设置面板的开关负责。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const setCurrentChapter = useSetAtom(currentChapterAtom)
   const randomConfig = useAtomValue(randomConfigAtom)
   const chapterLogUploader = useMixPanelChapterLogUploader(state)
@@ -126,27 +148,41 @@ const App: React.FC = () => {
 
   useConfetti(state.isFinished)
 
+  const header = (
+    <Header>
+      <DictChapterButton />
+      <PronunciationSwitcher />
+      <Switcher />
+      <StartButton isLoading={isLoading} />
+      <Tooltip content="跳过该词">
+        <button
+          className={`${
+            state.isShowSkip ? 'bg-orange-400' : 'invisible w-0 bg-gray-300 px-0 opacity-0'
+          } my-btn-primary transition-all duration-300 `}
+          onClick={skipWord}
+        >
+          Skip
+        </button>
+      </Tooltip>
+    </Header>
+  )
+
   return (
     <TypingContext.Provider value={{ state: state, dispatch }}>
       {state.isFinished && <DonateCard />}
       {state.isFinished && <ResultScreen />}
-      <Layout>
-        <Header>
-          <DictChapterButton />
-          <PronunciationSwitcher />
-          <Switcher />
-          <StartButton isLoading={isLoading} />
-          <Tooltip content="跳过该词">
-            <button
-              className={`${
-                state.isShowSkip ? 'bg-orange-400' : 'invisible w-0 bg-gray-300 px-0 opacity-0'
-              } my-btn-primary transition-all duration-300 `}
-              onClick={skipWord}
-            >
-              Skip
-            </button>
-          </Tooltip>
-        </Header>
+      <Layout hideFooter={isImmersiveMode}>
+        {isImmersiveMode ? (
+          // 沉浸模式下顶栏脱离文档流悬浮在顶部，默认淡出；
+          // 鼠标移到顶部区域时浮现，这样切词典和改设置不必退出模式。
+          <div className="group fixed inset-x-0 top-0 z-30">
+            <div className="pointer-events-none -translate-y-3 opacity-0 transition-all duration-300 group-hover:pointer-events-auto group-hover:translate-y-0 group-hover:opacity-100">
+              {header}
+            </div>
+          </div>
+        ) : (
+          header
+        )}
         <div className="container mx-auto flex h-full flex-1 flex-col items-center justify-center pb-5">
           <div className="container relative mx-auto flex h-full flex-col items-center">
             <div className="container flex flex-grow items-center justify-center">
@@ -161,11 +197,12 @@ const App: React.FC = () => {
                 !state.isFinished && <WordPanel />
               )}
             </div>
-            <Speed />
+            {!isImmersiveMode && <Speed />}
           </div>
         </div>
       </Layout>
-      <WordList />
+      {/* 词表抽屉在沉浸模式下一并隐藏，避免左侧留一个悬浮按钮 */}
+      {!isImmersiveMode && <WordList />}
     </TypingContext.Provider>
   )
 }

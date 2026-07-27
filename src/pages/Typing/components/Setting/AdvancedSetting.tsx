@@ -1,5 +1,15 @@
 import styles from './index.module.css'
-import { isIgnoreCaseAtom, isShowAnswerOnHoverAtom, isShowPrevAndNextWordAtom, isTextSelectableAtom, randomConfigAtom } from '@/store'
+import {
+  continuousModeConfigAtom,
+  isIgnoreCaseAtom,
+  isImmersiveModeAtom,
+  isMiniWindowModeAtom,
+  isShowAnswerOnHoverAtom,
+  isShowPrevAndNextWordAtom,
+  isTextSelectableAtom,
+  randomConfigAtom,
+} from '@/store'
+import { IS_DESKTOP, enterMiniWindow, exitMiniWindow } from '@/utils/desktop'
 import { Switch } from '@headlessui/react'
 import * as ScrollArea from '@radix-ui/react-scroll-area'
 import { useAtom } from 'jotai'
@@ -11,6 +21,9 @@ export default function AdvancedSetting() {
   const [isIgnoreCase, setIsIgnoreCase] = useAtom(isIgnoreCaseAtom)
   const [isTextSelectable, setIsTextSelectable] = useAtom(isTextSelectableAtom)
   const [isShowAnswerOnHover, setIsShowAnswerOnHover] = useAtom(isShowAnswerOnHoverAtom)
+  const [continuousModeConfig, setContinuousModeConfig] = useAtom(continuousModeConfigAtom)
+  const [isImmersiveMode, setIsImmersiveMode] = useAtom(isImmersiveModeAtom)
+  const [isMiniWindowMode, setIsMiniWindowMode] = useAtom(isMiniWindowModeAtom)
 
   const onToggleRandom = useCallback(
     (checked: boolean) => {
@@ -20,6 +33,33 @@ export default function AdvancedSetting() {
       }))
     },
     [setRandomConfig],
+  )
+
+  const onToggleMiniWindowMode = useCallback(
+    (checked: boolean) => {
+      setIsMiniWindowMode(checked)
+      // 窗口尺寸的实际调整交给 Tauri，失败时回滚开关，避免状态与窗口不一致。
+      const apply = checked ? enterMiniWindow : exitMiniWindow
+      apply().catch(() => setIsMiniWindowMode(!checked))
+    },
+    [setIsMiniWindowMode],
+  )
+
+  const onToggleImmersiveMode = useCallback(
+    (checked: boolean) => {
+      setIsImmersiveMode(checked)
+    },
+    [setIsImmersiveMode],
+  )
+
+  const onToggleContinuousMode = useCallback(
+    (checked: boolean) => {
+      setContinuousModeConfig((prev) => ({
+        ...prev,
+        isOpen: checked,
+      }))
+    },
+    [setContinuousModeConfig],
   )
 
   const onToggleLastAndNextWord = useCallback(
@@ -62,6 +102,46 @@ export default function AdvancedSetting() {
               </Switch>
               <span className="text-right text-xs font-normal leading-tight text-gray-600">{`随机已${
                 randomConfig.isOpen ? '开启' : '关闭'
+              }`}</span>
+            </div>
+          </div>
+          {IS_DESKTOP && (
+            <div className={styles.section}>
+              <span className={styles.sectionLabel}>摸鱼模式</span>
+              <span className={styles.sectionDescription}>
+                把窗口缩成置顶小窗，叠在其他应用上练习。该尺寸下自动使用沉浸布局。想打字时先点一下小窗使其获得焦点
+              </span>
+              <div className={styles.switchBlock}>
+                <Switch checked={isMiniWindowMode} onChange={onToggleMiniWindowMode} className="switch-root">
+                  <span aria-hidden="true" className="switch-thumb" />
+                </Switch>
+                <span className="text-right text-xs font-normal leading-tight text-gray-600">{`摸鱼模式已${
+                  isMiniWindowMode ? '开启' : '关闭'
+                }`}</span>
+              </div>
+            </div>
+          )}
+          <div className={styles.section}>
+            <span className={styles.sectionLabel}>沉浸模式</span>
+            <span className={styles.sectionDescription}>练习时隐藏顶栏、统计与页脚，只保留单词。鼠标移到窗口顶部可临时唤出顶栏</span>
+            <div className={styles.switchBlock}>
+              <Switch checked={isImmersiveMode} onChange={onToggleImmersiveMode} className="switch-root">
+                <span aria-hidden="true" className="switch-thumb" />
+              </Switch>
+              <span className="text-right text-xs font-normal leading-tight text-gray-600">{`沉浸模式已${
+                isImmersiveMode ? '开启' : '关闭'
+              }`}</span>
+            </div>
+          </div>
+          <div className={styles.section}>
+            <span className={styles.sectionLabel}>连续练习</span>
+            <span className={styles.sectionDescription}>开启后，练完一章不再弹出结算页，直接进入下一章；练完最后一章会回到第一章</span>
+            <div className={styles.switchBlock}>
+              <Switch checked={continuousModeConfig.isOpen} onChange={onToggleContinuousMode} className="switch-root">
+                <span aria-hidden="true" className="switch-thumb" />
+              </Switch>
+              <span className="text-right text-xs font-normal leading-tight text-gray-600">{`连续练习已${
+                continuousModeConfig.isOpen ? '开启' : '关闭'
               }`}</span>
             </div>
           </div>
