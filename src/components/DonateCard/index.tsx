@@ -11,6 +11,15 @@ import type React from 'react'
 import { Fragment, useLayoutEffect, useMemo, useState } from 'react'
 import IconParty from '~icons/logos/partytown-icon'
 
+/**
+ * FORK-ONLY：仅存在于 fork/release 分支，用于个人构建时关闭捐赠卡片。
+ *
+ * 上游的 qwerty-learner 是免费、无广告、无商业化项目，这张卡片是它唯一的
+ * 资助入口，且已限频为每 30 天最多一次。此开关不要合入 feat/tauri2-macos，
+ * 也不要提交给上游。
+ */
+const DISABLE_DONATE_CARD = true
+
 export const DonateCard = () => {
   const [show, setShow] = useState(false)
   const [amount, setAmount] = useState<AmountType | undefined>(undefined)
@@ -68,6 +77,11 @@ export const DonateCard = () => {
   }
 
   useLayoutEffect(() => {
+    // FORK-ONLY：本分支（fork/release）用于个人构建，永久关闭捐赠卡片。
+    // 这段改动不要合进 feat/tauri2-macos，也不要提交给上游——
+    // 上游是免费无广告项目，这是它唯一的资助入口。
+    if (DISABLE_DONATE_CARD) return
+
     if (chapterNumber && chapterNumber !== 0 && chapterNumber % 5 === 0) {
       const now = dayjs()
 
