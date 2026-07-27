@@ -10,6 +10,35 @@ use tauri::http::{Request, Response, StatusCode};
 use tauri::{Manager, Runtime, UriSchemeContext, UriSchemeResponder};
 use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
 
+/// 整窗半透明。
+///
+/// 走 NSWindow 的 `alphaValue`——这是 AppKit 的公开属性，与「背景逐像素透明」
+/// （`transparent: true`，macOS 上需要私有 API 且未能生效）是两套机制：
+/// 它只是把整个窗口按比例混合到桌面上，不涉及 WebView 的合成层。
+#[cfg(target_os = "macos")]
+#[tauri::command]
+fn set_window_alpha(window: tauri::WebviewWindow, alpha: f64) -> Result<(), String> {
+    use objc2::runtime::AnyObject;
+
+    let ns_window = window.ns_window().map_err(|err| err.to_string())? as *mut AnyObject;
+    if ns_window.is_null() {
+        return Err("ns_window is null".into());
+    }
+
+    // 全透明会让窗口彻底点不到，留一个下限。
+    let alpha = alpha.clamp(0.2, 1.0);
+    unsafe {
+        let _: () = objc2::msg_send![ns_window, setAlphaValue: alpha];
+    }
+    Ok(())
+}
+
+#[cfg(not(target_os = "macos"))]
+#[tauri::command]
+fn set_window_alpha(_window: tauri::WebviewWindow, _alpha: f64) -> Result<(), String> {
+    Err("only supported on macOS".into())
+}
+
 /// 摸鱼模式的「老板键」。
 ///
 /// 切换窗口显隐必须在 Rust 侧完成：窗口一旦 hide()，webview 的 JS 运行时会被
@@ -190,7 +219,7 @@ fn main() {
                 })
                 .build(),
         )
-        .invoke_handler(tauri::generate_handler![set_panic_key_enabled])
+        .invoke_handler(tauri::generate_handler![set_panic_key_enabled, set_window_alpha])
         .register_asynchronous_uri_scheme_protocol("pron", handle_pronunciation_request)
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

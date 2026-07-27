@@ -7,11 +7,13 @@ import {
   isShowAnswerOnHoverAtom,
   isShowPrevAndNextWordAtom,
   isTextSelectableAtom,
+  miniWindowOpacityAtom,
   randomConfigAtom,
 } from '@/store'
-import { IS_DESKTOP, PANIC_KEY_SHORTCUT, enterMiniWindow, exitMiniWindow } from '@/utils/desktop'
+import { IS_DESKTOP, PANIC_KEY_SHORTCUT, enterMiniWindow, exitMiniWindow, setMiniWindowOpacity } from '@/utils/desktop'
 import { Switch } from '@headlessui/react'
 import * as ScrollArea from '@radix-ui/react-scroll-area'
+import * as Slider from '@radix-ui/react-slider'
 import { useAtom } from 'jotai'
 import { useCallback } from 'react'
 
@@ -24,6 +26,7 @@ export default function AdvancedSetting() {
   const [continuousModeConfig, setContinuousModeConfig] = useAtom(continuousModeConfigAtom)
   const [isImmersiveMode, setIsImmersiveMode] = useAtom(isImmersiveModeAtom)
   const [isMiniWindowMode, setIsMiniWindowMode] = useAtom(isMiniWindowModeAtom)
+  const [miniWindowOpacity, setMiniWindowOpacityValue] = useAtom(miniWindowOpacityAtom)
 
   const onToggleRandom = useCallback(
     (checked: boolean) => {
@@ -39,10 +42,20 @@ export default function AdvancedSetting() {
     (checked: boolean) => {
       setIsMiniWindowMode(checked)
       // 窗口尺寸的实际调整交给 Tauri，失败时回滚开关，避免状态与窗口不一致。
-      const apply = checked ? enterMiniWindow : exitMiniWindow
+      const apply = checked ? () => enterMiniWindow(miniWindowOpacity) : exitMiniWindow
       apply().catch(() => setIsMiniWindowMode(!checked))
     },
-    [setIsMiniWindowMode],
+    [setIsMiniWindowMode, miniWindowOpacity],
+  )
+
+  const onChangeMiniWindowOpacity = useCallback(
+    (value: [number]) => {
+      const next = value[0] / 100
+      setMiniWindowOpacityValue(next)
+      // 拖动时即时生效，方便边看边调。
+      setMiniWindowOpacity(next).catch(() => undefined)
+    },
+    [setMiniWindowOpacityValue],
   )
 
   const onToggleImmersiveMode = useCallback(
@@ -121,6 +134,27 @@ export default function AdvancedSetting() {
                   isMiniWindowMode ? '开启' : '关闭'
                 }`}</span>
               </div>
+              {isMiniWindowMode && (
+                <div className={styles.block}>
+                  <span className={styles.blockLabel}>整窗不透明度</span>
+                  <div className="flex h-5 w-full items-center justify-between">
+                    <Slider.Root
+                      defaultValue={[miniWindowOpacity * 100]}
+                      max={100}
+                      min={30}
+                      step={5}
+                      className="slider"
+                      onValueChange={onChangeMiniWindowOpacity}
+                    >
+                      <Slider.Track>
+                        <Slider.Range />
+                      </Slider.Track>
+                      <Slider.Thumb />
+                    </Slider.Root>
+                    <span className="ml-4 w-10 text-xs font-normal text-gray-600">{`${Math.round(miniWindowOpacity * 100)}%`}</span>
+                  </div>
+                </div>
+              )}
             </div>
           )}
           <div className={styles.section}>
