@@ -85,6 +85,9 @@ export const isShowAnswerOnHoverAtom = atomWithStorage('isShowAnswerOnHover', tr
 
 export const isTextSelectableAtom = atomWithStorage('isTextSelectable', false)
 
+/** 沉浸模式：练习时隐藏顶栏、统计条与页脚，只留单词本身。顶栏在鼠标移到顶部时浮现。 */
+export const isImmersiveModeAtom = atomWithStorage('isImmersiveMode', false)
+
 export const reviewModeInfoAtom = reviewInfoAtom({
   isReviewMode: false,
   reviewRecord: undefined as ReviewRecord | undefined,

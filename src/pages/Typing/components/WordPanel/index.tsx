@@ -11,6 +11,7 @@ import {
   continuousModeConfigAtom,
   currentChapterAtom,
   currentDictInfoAtom,
+  isImmersiveModeAtom,
   isReviewModeAtom,
   isShowPrevAndNextWordAtom,
   loopWordConfigAtom,
@@ -28,6 +29,7 @@ export default function WordPanel() {
   const { state, dispatch } = useContext(TypingContext)!
   const phoneticConfig = useAtomValue(phoneticConfigAtom)
   const isShowPrevAndNextWord = useAtomValue(isShowPrevAndNextWordAtom)
+  const isImmersiveMode = useAtomValue(isImmersiveModeAtom)
   const [wordComponentKey, setWordComponentKey] = useState(0)
   const [currentWordExerciseCount, setCurrentWordExerciseCount] = useState(0)
   const { times: loopWordTimes } = useAtomValue(loopWordConfigAtom)
@@ -187,7 +189,7 @@ export default function WordPanel() {
   return (
     <div className="container flex h-full w-full flex-col items-center justify-center">
       <div className="container flex h-24 w-full shrink-0 grow-0 justify-between px-12 pt-10">
-        {isShowPrevAndNextWord && state.isTyping && (
+        {isShowPrevAndNextWord && !isImmersiveMode && state.isTyping && (
           <>
             <PrevAndNextWord type="prev" />
             <PrevAndNextWord type="next" />

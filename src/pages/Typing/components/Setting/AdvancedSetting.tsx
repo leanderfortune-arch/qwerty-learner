@@ -2,6 +2,7 @@ import styles from './index.module.css'
 import {
   continuousModeConfigAtom,
   isIgnoreCaseAtom,
+  isImmersiveModeAtom,
   isShowAnswerOnHoverAtom,
   isShowPrevAndNextWordAtom,
   isTextSelectableAtom,
@@ -19,6 +20,7 @@ export default function AdvancedSetting() {
   const [isTextSelectable, setIsTextSelectable] = useAtom(isTextSelectableAtom)
   const [isShowAnswerOnHover, setIsShowAnswerOnHover] = useAtom(isShowAnswerOnHoverAtom)
   const [continuousModeConfig, setContinuousModeConfig] = useAtom(continuousModeConfigAtom)
+  const [isImmersiveMode, setIsImmersiveMode] = useAtom(isImmersiveModeAtom)
 
   const onToggleRandom = useCallback(
     (checked: boolean) => {
@@ -28,6 +30,13 @@ export default function AdvancedSetting() {
       }))
     },
     [setRandomConfig],
+  )
+
+  const onToggleImmersiveMode = useCallback(
+    (checked: boolean) => {
+      setIsImmersiveMode(checked)
+    },
+    [setIsImmersiveMode],
   )
 
   const onToggleContinuousMode = useCallback(
@@ -80,6 +89,18 @@ export default function AdvancedSetting() {
               </Switch>
               <span className="text-right text-xs font-normal leading-tight text-gray-600">{`随机已${
                 randomConfig.isOpen ? '开启' : '关闭'
+              }`}</span>
+            </div>
+          </div>
+          <div className={styles.section}>
+            <span className={styles.sectionLabel}>沉浸模式</span>
+            <span className={styles.sectionDescription}>练习时隐藏顶栏、统计与页脚，只保留单词。鼠标移到窗口顶部可临时唤出顶栏</span>
+            <div className={styles.switchBlock}>
+              <Switch checked={isImmersiveMode} onChange={onToggleImmersiveMode} className="switch-root">
+                <span aria-hidden="true" className="switch-thumb" />
+              </Switch>
+              <span className="text-right text-xs font-normal leading-tight text-gray-600">{`沉浸模式已${
+                isImmersiveMode ? '开启' : '关闭'
               }`}</span>
             </div>
           </div>
