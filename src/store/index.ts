@@ -98,10 +98,10 @@ export const isMiniWindowModeAtom = atomWithStorage('isMiniWindowMode', false)
 /**
  * 摸鱼模式下的整窗不透明度。
  *
- * 作用于整个窗口（含文字与标题栏），不是只让背景透出来，
- * 所以调得太低会连单词都看不清；默认保守一些。
+ * 默认完全不透明：透明作用于整个窗口（含文字与标题栏），会牺牲可读性，
+ * 该不该牺牲、牺牲多少由用户自己在设置里决定，不替他预设。
  */
-export const miniWindowOpacityAtom = atomWithStorage('miniWindowOpacity', 0.85)
+export const miniWindowOpacityAtom = atomWithStorage('miniWindowOpacity', 1)
 
 export const reviewModeInfoAtom = reviewInfoAtom({
   isReviewMode: false,
