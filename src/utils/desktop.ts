@@ -54,12 +54,22 @@ function readStoredMiniPosition(): { x: number; y: number } | null {
  */
 export const PANIC_KEY_SHORTCUT = 'CommandOrControl+Alt+K'
 
+/**
+ * 设置整窗不透明度。走 NSWindow 的 alphaValue，作用于整个窗口。
+ * Web 端无效，仅桌面端可用。
+ */
+export async function setMiniWindowOpacity(alpha: number): Promise<void> {
+  if (!IS_DESKTOP) return
+  const { invoke } = await import('@tauri-apps/api/core')
+  await invoke('set_window_alpha', { alpha })
+}
+
 async function setPanicKeyEnabled(enabled: boolean): Promise<void> {
   const { invoke } = await import('@tauri-apps/api/core')
   await invoke('set_panic_key_enabled', { enabled })
 }
 
-export async function enterMiniWindow(): Promise<void> {
+export async function enterMiniWindow(opacity = 1): Promise<void> {
   if (!IS_DESKTOP) return
 
   const { getCurrentWindow, LogicalSize } = await import('@tauri-apps/api/window')
@@ -83,6 +93,7 @@ export async function enterMiniWindow(): Promise<void> {
 
   // 快捷键注册失败（比如被别的软件占用）不该拖垮整个摸鱼模式。
   await setPanicKeyEnabled(true).catch(() => undefined)
+  await setMiniWindowOpacity(opacity).catch(() => undefined)
 }
 
 export async function exitMiniWindow(): Promise<void> {
@@ -101,6 +112,8 @@ export async function exitMiniWindow(): Promise<void> {
     // 位置记不住不影响退出本身，忽略。
   }
 
+  // 退出前必须恢复不透明，否则正常窗口也会是半透明的。
+  await setMiniWindowOpacity(1).catch(() => undefined)
   await setPanicKeyEnabled(false).catch(() => undefined)
 
   await win.setAlwaysOnTop(false)

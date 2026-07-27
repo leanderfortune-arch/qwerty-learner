@@ -95,6 +95,14 @@ export const isImmersiveModeAtom = atomWithStorage('isImmersiveMode', false)
  */
 export const isMiniWindowModeAtom = atomWithStorage('isMiniWindowMode', false)
 
+/**
+ * 摸鱼模式下的整窗不透明度。
+ *
+ * 作用于整个窗口（含文字与标题栏），不是只让背景透出来，
+ * 所以调得太低会连单词都看不清；默认保守一些。
+ */
+export const miniWindowOpacityAtom = atomWithStorage('miniWindowOpacity', 0.85)
+
 export const reviewModeInfoAtom = reviewInfoAtom({
   isReviewMode: false,
   reviewRecord: undefined as ReviewRecord | undefined,

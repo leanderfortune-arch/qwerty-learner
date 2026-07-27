@@ -20,6 +20,7 @@ import {
   isImmersiveModeAtom,
   isMiniWindowModeAtom,
   isReviewModeAtom,
+  miniWindowOpacityAtom,
   randomConfigAtom,
   reviewModeInfoAtom,
 } from '@/store'
@@ -40,6 +41,7 @@ const App: React.FC = () => {
   const [currentDictId, setCurrentDictId] = useAtom(currentDictIdAtom)
   const isImmersiveModeSetting = useAtomValue(isImmersiveModeAtom)
   const isMiniWindowMode = useAtomValue(isMiniWindowModeAtom)
+  const miniWindowOpacity = useAtomValue(miniWindowOpacityAtom)
   // 小窗尺寸下顶栏与统计条根本放不下，因此一并走沉浸布局。
   const isImmersiveMode = isImmersiveModeSetting || isMiniWindowMode
 
@@ -47,7 +49,7 @@ const App: React.FC = () => {
   // 需要把窗口重新缩回小窗，否则状态与实际窗口不一致。
   useEffect(() => {
     if (!isMiniWindowMode) return
-    enterMiniWindow().catch(() => undefined)
+    enterMiniWindow(miniWindowOpacity).catch(() => undefined)
     // 只在挂载时同步一次，后续切换由设置面板的开关负责。
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
