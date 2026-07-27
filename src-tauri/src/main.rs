@@ -5,8 +5,42 @@ use base64::engine::general_purpose::URL_SAFE_NO_PAD;
 use base64::Engine as _;
 use sha2::{Digest, Sha256};
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::http::{Request, Response, StatusCode};
 use tauri::{Manager, Runtime, UriSchemeContext, UriSchemeResponder};
+use tauri_plugin_global_shortcut::{GlobalShortcutExt, ShortcutState};
+
+/// 摸鱼模式的「老板键」。
+///
+/// 切换窗口显隐必须在 Rust 侧完成：窗口一旦 hide()，webview 的 JS 运行时会被
+/// 系统挂起，注册在前端的快捷键回调收不到后续按键，窗口就再也唤不回来。
+const PANIC_KEY_SHORTCUT: &str = "CommandOrControl+Alt+K";
+
+/// 自己记录是否已被老板键收起。
+///
+/// 不用 `is_visible()` 判断：macOS 上 hide() 之后它仍可能报告为可见，
+/// 于是第二次按键又执行一次隐藏，窗口再也回不来。
+static PANIC_HIDDEN: AtomicBool = AtomicBool::new(false);
+
+/// 由前端在进出摸鱼模式时调用。全局快捷键会拦截整个系统的按键，
+/// 因此只在摸鱼模式期间占用。
+#[tauri::command]
+fn set_panic_key_enabled(app: tauri::AppHandle, enabled: bool) -> Result<(), String> {
+    let shortcuts = app.global_shortcut();
+    let result = if enabled {
+        shortcuts.register(PANIC_KEY_SHORTCUT)
+    } else {
+        // 退出摸鱼模式时若窗口正被收起，先还原，否则用户失去唤回入口。
+        if PANIC_HIDDEN.swap(false, Ordering::SeqCst) {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }
+        shortcuts.unregister(PANIC_KEY_SHORTCUT)
+    };
+    result.map_err(|err| err.to_string())
+}
 
 /// 发音音频只允许代理这一个来源，避免自定义协议变成任意 URL 的转发器。
 const ALLOWED_AUDIO_HOST: &str = "dict.youdao.com";
@@ -135,6 +169,28 @@ fn handle_pronunciation_request<R: Runtime>(
 
 fn main() {
     tauri::Builder::default()
+        // 摸鱼模式的「老板键」：一键把窗口收起来，再按一下唤回。
+        .plugin(
+            tauri_plugin_global_shortcut::Builder::new()
+                .with_handler(|app, _shortcut, event| {
+                    // 按下与抬起都会回调，只处理按下，否则一次按键切换两次。
+                    if event.state() != ShortcutState::Pressed {
+                        return;
+                    }
+                    let Some(window) = app.get_webview_window("main") else {
+                        return;
+                    };
+                    if PANIC_HIDDEN.swap(false, Ordering::SeqCst) {
+                        let _ = window.show();
+                        let _ = window.set_focus();
+                    } else {
+                        PANIC_HIDDEN.store(true, Ordering::SeqCst);
+                        let _ = window.hide();
+                    }
+                })
+                .build(),
+        )
+        .invoke_handler(tauri::generate_handler![set_panic_key_enabled])
         .register_asynchronous_uri_scheme_protocol("pron", handle_pronunciation_request)
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

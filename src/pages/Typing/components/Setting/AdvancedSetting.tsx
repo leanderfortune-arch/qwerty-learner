@@ -9,7 +9,7 @@ import {
   isTextSelectableAtom,
   randomConfigAtom,
 } from '@/store'
-import { IS_DESKTOP, enterMiniWindow, exitMiniWindow } from '@/utils/desktop'
+import { IS_DESKTOP, PANIC_KEY_SHORTCUT, enterMiniWindow, exitMiniWindow } from '@/utils/desktop'
 import { Switch } from '@headlessui/react'
 import * as ScrollArea from '@radix-ui/react-scroll-area'
 import { useAtom } from 'jotai'
@@ -109,7 +109,9 @@ export default function AdvancedSetting() {
             <div className={styles.section}>
               <span className={styles.sectionLabel}>摸鱼模式</span>
               <span className={styles.sectionDescription}>
-                把窗口缩成置顶小窗，叠在其他应用上练习。该尺寸下自动使用沉浸布局。想打字时先点一下小窗使其获得焦点
+                把窗口缩成置顶小窗，叠在其他应用上练习。该尺寸下自动使用沉浸布局，窗口位置会被记住。 开启期间可用{' '}
+                {PANIC_KEY_SHORTCUT.replace('CommandOrControl', '⌘').replace('Alt', '⌥').replace(/\+/g, '')} 一键隐藏/唤回。
+                想打字时先点一下小窗使其获得焦点
               </span>
               <div className={styles.switchBlock}>
                 <Switch checked={isMiniWindowMode} onChange={onToggleMiniWindowMode} className="switch-root">
