@@ -15,6 +15,7 @@ import { TypingContext, TypingStateActionType } from '@/pages/Typing/store'
 import {
   currentChapterAtom,
   currentDictInfoAtom,
+  fontSizeConfigAtom,
   isIgnoreCaseAtom,
   isShowAnswerOnHoverAtom,
   isTextSelectableAtom,
@@ -25,7 +26,7 @@ import type { Word } from '@/typings'
 import { MOD, getUtcStringForMixpanel } from '@/utils'
 import { useSaveWordRecord } from '@/utils/db'
 import { useAtomValue } from 'jotai'
-import { useCallback, useContext, useEffect, useRef, useState } from 'react'
+import { useCallback, useContext, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { useHotkeys } from 'react-hotkeys-hook'
 import { useImmer } from 'use-immer'
 
@@ -45,6 +46,7 @@ export default function WordComponent({
   const [wordState, setWordState] = useImmer<WordState>(structuredClone(initialWordState))
 
   const wordDictationConfig = useAtomValue(wordDictationConfigAtom)
+  const fontSizeConfig = useAtomValue(fontSizeConfigAtom)
   const isTextSelectable = useAtomValue(isTextSelectableAtom)
   const isIgnoreCase = useAtomValue(isIgnoreCaseAtom)
   const isShowAnswerOnHover = useAtomValue(isShowAnswerOnHoverAtom)
@@ -59,6 +61,36 @@ export default function WordComponent({
 
   const [showTipAlert, setShowTipAlert] = useState(false)
   const wordPronunciationIconRef = useRef<WordPronunciationIconRef>(null)
+
+  // 窗口很窄时（尤其是摸鱼模式的 420px 小窗）长单词会超出可视宽度。
+  // 等宽字体的渲染宽度与字号成正比，所以测一次当前宽度就能直接算出
+  // 恰好放得下的字号，不需要反复试探。
+  const lettersRef = useRef<HTMLDivElement>(null)
+  const [fittedFontSize, setFittedFontSize] = useState<number | undefined>(undefined)
+
+  useLayoutEffect(() => {
+    const measure = () => {
+      const el = lettersRef.current
+      if (!el) return
+
+      const configured = fontSizeConfig.foreignFont
+      // 单词右侧的发音图标绝对定位在容器外，两侧各留些余量。
+      const available = window.innerWidth - 140
+      const renderedWidth = el.scrollWidth
+      if (renderedWidth <= 0 || available <= 0) return
+
+      // 当前渲染用的字号可能已被缩放过，按比例还原到「配置字号下的宽度」再计算。
+      const currentSize = fittedFontSize ?? configured
+      const widthAtConfigured = (renderedWidth / currentSize) * configured
+      const next = widthAtConfigured > available ? Math.max(16, Math.floor((available / widthAtConfigured) * configured)) : configured
+
+      setFittedFontSize((prev) => (prev === next ? prev : next))
+    }
+
+    measure()
+    window.addEventListener('resize', measure)
+    return () => window.removeEventListener('resize', measure)
+  }, [wordState.displayWord, fontSizeConfig.foreignFont, fittedFontSize])
 
   useEffect(() => {
     // run only when word changes
@@ -305,10 +337,19 @@ export default function WordComponent({
           <div
             onMouseEnter={() => handleHoverWord(true)}
             onMouseLeave={() => handleHoverWord(false)}
+            ref={lettersRef}
             className={`flex items-center ${isTextSelectable && 'select-all'} justify-center ${wordState.hasWrong ? style.wrong : ''}`}
           >
             {wordState.displayWord.split('').map((t, index) => {
-              return <Letter key={`${index}-${t}`} letter={t} visible={getLetterVisible(index)} state={wordState.letterStates[index]} />
+              return (
+                <Letter
+                  key={`${index}-${t}`}
+                  letter={t}
+                  visible={getLetterVisible(index)}
+                  state={wordState.letterStates[index]}
+                  fontSize={fittedFontSize}
+                />
+              )
             })}
           </div>
           {pronunciationIsOpen && (

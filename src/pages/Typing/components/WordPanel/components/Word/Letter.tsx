@@ -22,16 +22,18 @@ export type LetterProps = {
   letter: string
   state?: LetterState
   visible?: boolean
+  /** 由 Word 计算的自适应字号；未传则用设置里的值。 */
+  fontSize?: number
 }
 
-const Letter: React.FC<LetterProps> = ({ letter, state = 'normal', visible = true }) => {
+const Letter: React.FC<LetterProps> = ({ letter, state = 'normal', visible = true, fontSize }) => {
   const fontSizeConfig = useAtomValue(fontSizeConfigAtom)
   return (
     <span
       className={`m-0 p-0 font-mono font-normal ${
         stateClassNameMap[(letter === EXPLICIT_SPACE) as unknown as string][state]
       } pr-0.8 duration-0 dark:text-opacity-80`}
-      style={{ fontSize: fontSizeConfig.foreignFont.toString() + 'px' }}
+      style={{ fontSize: `${fontSize ?? fontSizeConfig.foreignFont}px` }}
     >
       {visible ? letter : '_'}
     </span>
