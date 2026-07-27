@@ -88,6 +88,13 @@ export const isTextSelectableAtom = atomWithStorage('isTextSelectable', false)
 /** 沉浸模式：练习时隐藏顶栏、统计条与页脚，只留单词本身。顶栏在鼠标移到顶部时浮现。 */
 export const isImmersiveModeAtom = atomWithStorage('isImmersiveMode', false)
 
+/**
+ * 摸鱼模式：把窗口缩成置顶小窗。仅桌面端可用。
+ * 该尺寸下放不下顶栏与统计条，因此强制使用沉浸布局——这是尺寸决定的，
+ * 不改变用户在设置里的沉浸模式偏好。
+ */
+export const isMiniWindowModeAtom = atomWithStorage('isMiniWindowMode', false)
+
 export const reviewModeInfoAtom = reviewInfoAtom({
   isReviewMode: false,
   reviewRecord: undefined as ReviewRecord | undefined,

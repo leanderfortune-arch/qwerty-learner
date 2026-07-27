@@ -14,9 +14,18 @@ import { DonateCard } from '@/components/DonateCard'
 import Header from '@/components/Header'
 import Tooltip from '@/components/Tooltip'
 import { idDictionaryMap } from '@/resources/dictionary'
-import { currentChapterAtom, currentDictIdAtom, isImmersiveModeAtom, isReviewModeAtom, randomConfigAtom, reviewModeInfoAtom } from '@/store'
+import {
+  currentChapterAtom,
+  currentDictIdAtom,
+  isImmersiveModeAtom,
+  isMiniWindowModeAtom,
+  isReviewModeAtom,
+  randomConfigAtom,
+  reviewModeInfoAtom,
+} from '@/store'
 import { IsDesktop, isLegal } from '@/utils'
 import { useSaveChapterRecord } from '@/utils/db'
+import { enterMiniWindow } from '@/utils/desktop'
 import { useMixPanelChapterLogUploader } from '@/utils/mixpanel'
 import { useAtom, useAtomValue, useSetAtom } from 'jotai'
 import type React from 'react'
@@ -29,7 +38,19 @@ const App: React.FC = () => {
   const { words } = useWordList()
 
   const [currentDictId, setCurrentDictId] = useAtom(currentDictIdAtom)
-  const isImmersiveMode = useAtomValue(isImmersiveModeAtom)
+  const isImmersiveModeSetting = useAtomValue(isImmersiveModeAtom)
+  const isMiniWindowMode = useAtomValue(isMiniWindowModeAtom)
+  // 小窗尺寸下顶栏与统计条根本放不下，因此一并走沉浸布局。
+  const isImmersiveMode = isImmersiveModeSetting || isMiniWindowMode
+
+  // 开关状态会持久化，但窗口尺寸不会：重启后若仍处于摸鱼模式，
+  // 需要把窗口重新缩回小窗，否则状态与实际窗口不一致。
+  useEffect(() => {
+    if (!isMiniWindowMode) return
+    enterMiniWindow().catch(() => undefined)
+    // 只在挂载时同步一次，后续切换由设置面板的开关负责。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   const setCurrentChapter = useSetAtom(currentChapterAtom)
   const randomConfig = useAtomValue(randomConfigAtom)
   const chapterLogUploader = useMixPanelChapterLogUploader(state)

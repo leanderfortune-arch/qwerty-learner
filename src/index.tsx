@@ -5,6 +5,7 @@ import { FriendLinks } from './pages/FriendLinks'
 import MobilePage from './pages/Mobile'
 import TypingPage from './pages/Typing'
 import { DARK_MODE_STORAGE_KEY, isOpenDarkModeAtom } from '@/store'
+import { IS_DESKTOP } from '@/utils/desktop'
 import { Analytics } from '@vercel/analytics/react'
 import 'animate.css'
 import { useAtom } from 'jotai'
@@ -49,12 +50,14 @@ function Root() {
     return () => query.removeEventListener('change', handleSystemThemeChange)
   }, [setDarkMode])
 
-  const [isMobile, setIsMobile] = useState(window.innerWidth <= 600)
+  // 桌面应用无论窗口多窄都不是移动设备。摸鱼模式会把窗口缩到 420px，
+  // 若仍按宽度判断就会跳到移动端落地页，练习界面直接消失。
+  const [isMobile, setIsMobile] = useState(!IS_DESKTOP && window.innerWidth <= 600)
 
   useEffect(() => {
     // 只更新断点状态。离开 /mobile 由下面的路由声明式处理：
     // 这里一旦做整页跳转，每次拉宽窗口都会重载页面并清空当前练习进度。
-    const handleResize = () => setIsMobile(window.innerWidth <= 600)
+    const handleResize = () => setIsMobile(!IS_DESKTOP && window.innerWidth <= 600)
 
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
